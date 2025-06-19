@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitor de Seguridad</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom CSS -->
+    <style>
+        .card-header {
+            font-weight: 600;
+        }
+        .metric-card {
+            transition: all 0.3s ease;
+        }
+        .metric-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        .traffic-log {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .badge-severity {
+            font-size: 0.8em;
+        }
+        .severity-high {
+            background-color: #dc3545;
+        }
+        .severity-medium {
+            background-color: #fd7e14;
+        }
+        .severity-low {
+            background-color: #ffc107;
+        }
+        .severity-info {
+            background-color: #0dcaf0;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-shield-alt me-2"></i>Monitor de Seguridad
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#"><i class="fas fa-home me-1"></i> Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#"><i class="fas fa-cog me-1"></i> Configuración</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid">
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="alert alert-info d-flex justify-content-between align-items-center">
+                    <div>
+                        <i class="fas fa-info-circle me-2"></i>
+                        <span id="last-updated">Última actualización: --/--/---- --:--:--</span>
+                    </div>
+                    <button class="btn btn-sm btn-outline-info" onclick="refreshAll()">
+                        <i class="fas fa-sync-alt me-1"></i> Actualizar
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Metrics Row -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card metric-card border-primary">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h6 class="card-subtitle mb-2 text-muted">Uso de CPU</h6>
+                                <h2 class="card-title" id="cpu-usage">0%</h2>
+                            </div>
+                            <div class="icon-circle bg-primary text-white">
+                                <i class="fas fa-microchip"></i>
+                            </div>
+                        </div>
+                        <div class="progress mt-2" style="height: 8px;">
+                            <div id="cpu-progress" class="progress-bar bg-primary" role="progressbar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-3">
+                <div class="card metric-card border-success">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h6 class="card-subtitle mb-2 text-muted">Uso de Memoria</h6>
+                                <h2 class="card-title" id="memory-usage">0%</h2>
+                            </div>
+                            <div class="icon-circle bg-success text-white">
+                                <i class="fas fa-memory"></i>
+                            </div>
+                        </div>
+                        <div class="progress mt-2" style="height: 8px;">
+                            <div id="memory-progress" class="progress-bar bg-success" role="progressbar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-3">
+                <div class="card metric-card border-warning">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h6 class="card-subtitle mb-2 text-muted">Uso de Disco</h6>
+                                <h2 class="card-title" id="disk-usage">0%</h2>
+                            </div>
+                            <div class="icon-circle bg-warning text-white">
+                                <i class="fas fa-hdd"></i>
+                            </div>
+                        </div>
+                        <div class="progress mt-2" style="height: 8px;">
+                            <div id="disk-progress" class="progress-bar bg-warning" role="progressbar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-3">
+                <div class="card metric-card border-danger">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h6 class="card-subtitle mb-2 text-muted">IPs Únicas</h6>
+                                <h2 class="card-title" id="unique-ips">0</h2>
+                            </div>
+                            <div class="icon-circle bg-danger text-white">
+                                <i class="fas fa-network-wired"></i>
+                            </div>
+                        </div>
+                        <p class="card-text text-muted mt-2">Visitas en las últimas 24h</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content Row -->
+        <div class="row">
+            <!-- Left Column -->
+            <div class="col-lg-8">
+                <!-- Traffic Logs -->
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <i class="fas fa-list me-2"></i> Registro de Tráfico Reciente
+                    </div>
+                    <div class="card-body traffic-log">
+                        <table class="table table-sm table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>IP</th>
+                                    <th>Método</th>
+                                    <th>Ruta</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="traffic-logs">
+                                <!-- Datos se cargarán aquí -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Top Processes -->
+                <div class="card mb-4">
+                    <div class="card-header bg-info text-white">
+                        <i class="fas fa-tasks me-2"></i> Procesos Principales
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>PID</th>
+                                    <th>Nombre</th>
+                                    <th>CPU %</th>
+                                    
+                                </tr>
+                            </thead>
+                            <tbody id="top-processes">
+                                <!-- Datos se cargarán aquí -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column -->
+            <div class="col-lg-4">
+                <!-- Blocked IPs -->
+                <div class="card mb-4">
+                    <div class="card-header bg-danger text-white">
+                        <i class="fas fa-ban me-2"></i> IPs Bloqueadas
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <button class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#blockModal">
+                                <i class="fas fa-plus-circle me-1"></i> Bloquear IP
+                            </button>
+                        </div>
+                        <ul class="list-group" id="blocked-ips-list">
+                            <!-- Datos se cargarán aquí -->
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="card mb-4">
+                    <div class="card-header bg-warning text-dark">
+                        <i class="fas fa-bolt me-2"></i> Acciones Rápidas
+                    </div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-outline-primary" onclick="sendTestAlert()">
+                                <i class="fas fa-bell me-1"></i> Enviar Alerta de Prueba
+                            </button>
+                            <button class="btn btn-outline-secondary" onclick="refreshAll()">
+                                <i class="fas fa-sync-alt me-1"></i> Actualizar Todo
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Alert Form -->
+                <div class="card">
+                    <div class="card-header bg-success text-white">
+                        <i class="fas fa-paper-plane me-2"></i> Enviar Alerta Manual
+                    </div>
+                    <div class="card-body">
+                        <form id="alertForm">
+                            <div class="mb-3">
+                                <label class="form-label">Tipo</label>
+                                <input type="text" class="form-control" name="type" value="Manual" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Severidad</label>
+                                <select class="form-select" name="severity" required>
+                                    <option value="info">Información</option>
+                                    <option value="low">Baja</option>
+                                    <option value="medium">Media</option>
+                                    <option value="high">Alta</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Mensaje</label>
+                                <textarea class="form-control" name="message" rows="3" required></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-success w-100">
+                                <i class="fas fa-paper-plane me-1"></i> Enviar
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Block IP Modal -->
+    <div class="modal fade" id="blockModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">Bloquear IP</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="blockForm">
+                        <div class="mb-3">
+                            <label class="form-label">Dirección IP</label>
+                            <input type="text" class="form-control" name="ip" placeholder="Ej: 192.168.1.100" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Motivo</label>
+                            <input type="text" class="form-control" name="reason" placeholder="Ej: Intento de ataque" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-danger" onclick="blockIP()">Bloquear IP</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS Bundle with Popper -->
+     <!-- Bootstrap JS Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- jQuery (necesario para algunos componentes de Bootstrap) -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- Custom JS -->
+    <script src="static/dashboard.js"></script>
+    <!-- Custom JS -->
+    <script>
+
+        // Función para formatear fecha
+        function formatDate(dateString) {
+            const options = { 
+                year: 'numeric', 
+                month: '2-digit', 
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            };
+            return new Date(dateString).toLocaleString('es-ES', options);
+        }
+
+        // Actualizar métricas del sistema
+        async function updateMetrics() {
+            try {
+                const response = await fetch('/api/metrics');
+                const data = await response.json();
+                
+                document.getElementById('cpu-usage').textContent = `${data.cpu}%`;
+                document.getElementById('memory-usage').textContent = `${data.ram}%`;
+                document.getElementById('disk-usage').textContent = `${data.disk}%`;
+                
+                document.getElementById('cpu-progress').style.width = `${data.cpu}%`;
+                document.getElementById('memory-progress').style.width = `${data.ram}%`;
+                document.getElementById('disk-progress').style.width = `${data.disk}%`;
+                
+                // Actualizar procesos principales
+                const processesTable = document.getElementById('top-processes');
+                processesTable.innerHTML = '';
+                data.top_processes.forEach(proc => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+
+                        <td>${proc.pid}</td>
+                        <td>${proc.name}</td>
+                        <td>${proc.cpu_percent}%</td>
+                        
+                    `;
+                    processesTable.appendChild(row);
+                });
+                
+                updateLastUpdated();
+            } catch (error) {
+                console.error('Error al obtener métricas:', error);
+            }
+        }
+
+        // Actualizar tráfico reciente
+        async function updateTraffic() {
+            try {
+                const response = await fetch('/api/traffic');
+                const logs = await response.json();
+                
+                const trafficTable = document.getElementById('traffic-logs');
+                trafficTable.innerHTML = '';
+                
+                logs.forEach(log => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${(log.timestamp)}</td>
+                        <td>${log.ip}</td>
+                        <td>${log.method}</td>
+                        <td>${log.url}</td>
+                        <td>${log.status}</td>
+                       
+                        <td>
+                            <button class="btn btn-sm btn-outline-danger" onclick="prepareBlockIP('${log.ip}')">
+                                <i class="fas fa-ban"></i>
+                            </button>
+                        </td>
+                    `;
+                    trafficTable.appendChild(row);
+                });
+                
+                updateLastUpdated();
+            } catch (error) {
+                console.error('Error al obtener tráfico:', error);
+            }
+        }
+
+        // Actualizar IPs únicas
+        async function updateUniqueIPs() {
+            try {
+                const response = await fetch('/api/ips');
+                const data = await response.json();
+                document.getElementById('unique-ips').textContent = data.total;
+                updateLastUpdated();
+            } catch (error) {
+                console.error('Error al obtener IPs únicas:', error);
+            }
+        }
+
+        // Actualizar IPs bloqueadas
+        async function updateBlockedIPs() {
+            try {
+                const response = await fetch('/api/blocked');
+                const blockedIPs = await response.json();
+                
+                const blockedList = document.getElementById('blocked-ips-list');
+                blockedList.innerHTML = '';
+                
+                if (blockedIPs.length === 0) {
+                    blockedList.innerHTML = '<li class="list-group-item text-muted">No hay IPs bloqueadas</li>';
+                } else {
+                    blockedIPs.forEach(ip => {
+                        const item = document.createElement('li');
+                        item.className = 'list-group-item d-flex justify-content-between align-items-center';
+                        item.innerHTML = `
+                            ${ip}
+                            <button class="btn btn-sm btn-outline-success" onclick="unblockIP('${ip}')">
+                                <i class="fas fa-unlock"></i> Desbloquear
+                            </button>
+                        `;
+                        blockedList.appendChild(item);
+                    });
+                }
+                
+                updateLastUpdated();
+            } catch (error) {
+                console.error('Error al obtener IPs bloqueadas:', error);
+            }
+        }
+
+        // Bloquear IP
+        async function blockIP() {
+            const form = document.getElementById('blockForm');
+            const ip = form.ip.value;
+            const reason = form.reason.value;
+            
+            if (!ip) return;
+            
+            try {
+                const response = await fetch('/api/block', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ ip, reason })
+                });
+                
+                if (response.ok) {
+                    alert(`IP ${ip} bloqueada exitosamente`);
+                    updateBlockedIPs();
+                    $('#blockModal').modal('hide');
+                    form.reset();
+                } else {
+                    alert('Error al bloquear la IP');
+                }
+            } catch (error) {
+                console.error('Error al bloquear IP:', error);
+                alert('Error al bloquear la IP');
+            }
+        }
+
+        // Preparar bloqueo de IP (desde tabla de tráfico)
+        function prepareBlockIP(ip) {
+            const form = document.getElementById('blockForm');
+            form.ip.value = ip;
+            form.reason.value = 'Intento de ataque detectado';
+            $('#blockModal').modal('show');
+        }
+
+        // Desbloquear IP
+        async function unblockIP(ip) {
+            if (!confirm(`¿Está seguro que desea desbloquear la IP ${ip}?`)) return;
+            
+            try {
+                const response = await fetch('/api/unblock', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ ip })
+                });
+                
+                if (response.ok) {
+                    alert(`IP ${ip} desbloqueada exitosamente`);
+                    updateBlockedIPs();
+                } else {
+                    alert('Error al desbloquear la IP');
+                }
+            } catch (error) {
+                console.error('Error al desbloquear IP:', error);
+                alert('Error al desbloquear la IP');
+            }
+        }
+
+        // Enviar alerta de prueba
+        async function sendTestAlert() {
+            try {
+                const response = await fetch('/api/telegram', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        type: "Prueba",
+                        severity: "info",
+                        message: "Esta es una alerta de prueba del sistema de monitoreo"
+                    })
+                });
+                
+                if (response.ok) {
+                    alert('Alerta de prueba enviada exitosamente');
+                } else {
+                    alert('Error al enviar alerta de prueba');
+                }
+            } catch (error) {
+                console.error('Error al enviar alerta:', error);
+                alert('Error al enviar alerta de prueba');
+            }
+        }
+
+        // Enviar alerta manual
+        document.getElementById('alertForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const form = e.target;
+            const formData = new FormData(form);
+            const data = {
+                type: formData.get('type'),
+                severity: formData.get('severity'),
+                message: formData.get('message')
+            };
+            
+            try {
+                const response = await fetch('/api/telegram', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                if (response.ok) {
+                    alert('Alerta enviada exitosamente');
+                    form.reset();
+                } else {
+                    alert('Error al enviar alerta');
+                }
+            } catch (error) {
+                console.error('Error al enviar alerta:', error);
+                alert('Error al enviar alerta');
+            }
+        });
+
+        // Actualizar última actualización
+        function updateLastUpdated() {
+            const now = new Date();
+            document.getElementById('last-updated').textContent = 
+                `Última actualización: ${formatDate(now)}`;
+        }
+
+        // Actualizar todo
+        function refreshAll() {
+            updateMetrics();
+            updateTraffic();
+            updateUniqueIPs();
+            updateBlockedIPs();
+        }
+
+        // Inicializar dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            refreshAll();
+            // Actualizar cada 30 segundos
+            setInterval(refreshAll, 30000);
+        });
+    </script>
+</body>
+</html>
