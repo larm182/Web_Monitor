@@ -1,0 +1,4 @@
+Flask==2.3.2
+python-telegram-bot==20.3  # Para telegram_alert.py
+psutil==5.9.5  # Para metrics.py
+requests==2.31.0  # Posiblemente necesaria para telegram_alert.py
